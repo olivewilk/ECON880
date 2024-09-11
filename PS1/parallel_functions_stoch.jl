@@ -38,30 +38,24 @@ end
     @unpack_Primitives prim
     
     v_next = SharedArray{Float64}(nk, nz)
-    @sync @distributed for z_index in 1:nz 
-    #for z_index in 1:nz
-        choice_lower = 1 #for exploiting monotonicity of policy function
+    @sync @distributed for (k_index, z_index) in collect(Iterators.product(1:nk, 1:nz))
         z = z_grid[z_index]
-        #@sync @distributed for k_index in 1:nk
-            for k_index in 1:nk
-
-            k = k_grid[k_index]
-            candidate_max = -Inf
-            budget = z*k^α + (1-δ)*k
-            
-            for kp_index in 1:nk
-                c = budget - k_grid[kp_index]
-                if c > 0
-                    val = log(c) + β*(Γ[z_index,1]*val_func[kp_index,1]+ Γ[z_index,2]*val_func[kp_index,2]) #compute value
-                    if val > candidate_max
-                        candidate_max = val
-                        res.pol_func[k_index, z_index] = k_grid[kp_index]
-                    end
+        k = k_grid[k_index]
+        candidate_max = -Inf
+        budget = z*k^α + (1-δ)*k
+        
+        for kp_index in 1:nk
+            c = budget - k_grid[kp_index]
+            if c > 0
+                val = log(c) + β*(Γ[z_index,1]*val_func[kp_index,1]+ Γ[z_index,2]*val_func[kp_index,2]) #compute value
+                if val > candidate_max
+                    candidate_max = val
+                    res.pol_func[k_index, z_index] = k_grid[kp_index]
                 end
             end
-            v_next[k_index,z_index] = candidate_max
         end
-    end 
+        v_next[k_index,z_index] = candidate_max
+    end
     v_next
 end
 

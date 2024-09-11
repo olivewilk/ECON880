@@ -40,21 +40,22 @@ function Bellman(prim::Primitives,res::Results)
     @unpack z_grid, k_grid, β, δ, α, nk, nz, Γ = prim #unpack model primitives
     v_next = zeros(nk, nz) #next guess of value function to fill
     for z_index = 1:nz 
-        choice_lower = 1 #for exploiting monotonicity of policy function
+        #choice_lower = 1 #for exploiting monotonicity of policy function
         z = z_grid[z_index]
         for k_index = 1:nk
             k = k_grid[k_index] #value of k
             candidate_max = -Inf #bad candidate max
             budget = z*k^α + (1-δ)*k #budget
 
-            for kp_index in choice_lower:nk #loop over possible selections of k', exploiting monotonicity of policy function
+            #for kp_index in choice_lower:nk #loop over possible selections of k', exploiting monotonicity of policy function
+            for kp_index in 1:nk
                 c = budget - k_grid[kp_index] #consumption given k' selection
                 if c>0 #check for positivity
                     val = log(c) + β*(Γ[z_index,1]*val_func[kp_index,1] + Γ[z_index,2]*val_func[kp_index,2]) #compute value
                     if val>candidate_max #check for new max value
                         candidate_max = val #update max value
                         res.pol_func[k_index, z_index] = k_grid[kp_index] #update policy function
-                        choice_lower = kp_index #update lowest possible choice
+                        #choice_lower = kp_index #update lowest possible choice
                     end
                 end
             end
@@ -65,14 +66,14 @@ function Bellman(prim::Primitives,res::Results)
 end
 
 #Value function iteration
-function V_iterate(prim::Primitives, res::Results; tol::Float64 = 1e-4, err::Float64 = 100.0)
+function V_iterate(prim::Primitives, res::Results; tol::Float64 = 1e-6, err::Float64 = 100.0)
     n = 0 #counter
 
     while err>tol #begin iteration
-        v_next = Bellman(prim, res) #spit out new vectors
-        err = abs.(maximum(v_next.-res.val_func))/abs(v_next[prim.nk, 1]) #reset error level
-        res.val_func = v_next #update value function
-        n+=1
+        v_next = Bellman(prim, res)
+        err = maximum(abs.(v_next .- res.val_func))
+        res.val_func .= v_next
+        n += 1
     end
     println("Stochastic value function converged in ", n, " iterations.")
 end
