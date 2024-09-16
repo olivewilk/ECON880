@@ -10,10 +10,10 @@
     q_max::Float64 = 1.0 #maximum bond price  
     A_min::Float64 = -2.0 #minimum asset
     A_max::Float64 = 5.0 #maximum asset
-    nA::Int64 = 1500 #number of asset grid points
+    nA::Int64 = 750 #number of asset grid points
     A_grid::Array{Float64,1} = collect(range(A_min, length = nA, stop = A_max))
     Π::Array{Float64,2} = [0.97 0.03; 0.5 0.5] #markov process for earnings 
-    q_initial=1.392 #initial bond price
+    q_initial=0.994275178 #initial bond price
     μ_dist_initial= vcat(((A_grid.-A_min)./(A_max-A_min)), ((A_grid.-A_min)./(A_max-A_min)))
 end
 
@@ -146,22 +146,23 @@ function Q_Solve(prim::Primitives, res::Results)
 
         V_iterate(prim, res, q) #iterate on value function
         
-        Tstar(prim, res, μ_dist) #iterate on cross sectional distribution
+        μ_dist= Tstar(prim, res, μ_dist) #iterate on cross sectional distribution
 
+        μ = reshape(μ_dist, (prim.nA, prim.ny))
        # println("mu: ",μ_dist)
-        integral = sum(res.pol_func[:, 1]'*μ_dist[1:nA] + res.pol_func[:, 2]'*μ_dist[nA+1:end])
-        #integral = sum(μ_dist[1:nA]*res.pol_func[:, 1] + μ_dist[nA+1:end]*res.pol_func[:, 2])
+        #integral = sum(res.pol_func[:, 1]'*μ_dist[1:nA] + res.pol_func[:, 2]'*μ_dist[nA+1:end])
+        integral = sum(μ.*res.pol_func)
         println("summation:",integral)
 
         if abs(integral)<=.01 #check for market clearing
             mk = 1 #market cleared
         elseif integral<-0.01 #adjust bond price
-            q = q-0.000001
+            q = q-0.0000000001
         elseif integral>0.01 #adjust bond price
-            q = q+0.000001
+            q = q+0.0000000001
         end 
         println("Bond price:",q)
-        if iterations>4000 #check for convergence
+        if iterations>10000 #check for convergence
             println("Bond price did not converge")
             break
         end

@@ -13,7 +13,7 @@
     nA::Int64 = 500 #number of asset grid points
     A_grid::Array{Float64,1} = collect(range(A_min, length = nA, stop = A_max))
     Π::Array{Float64,2} = [0.97 0.03; 0.5 0.5] #markov process for earnings 
-    q_initial=1.392 #initial bond price
+    q_initial=0.994 #initial bond price
     μ_dist_initial= vcat(((A_grid.-A_min)./(A_max-A_min)), ((A_grid.-A_min)./(A_max-A_min)))
 end
 
@@ -32,33 +32,48 @@ function Initialize()
     prim, res #return deliverables
 end
 
-#loop through current asset grid and future 
-    
+#continuation value function 
+function cont_val(ap, y, a, q, v_e, v_u, p, prim)
+    """ calculates V(a, s ; q) = u(c) + β*E[V(a',s';q)] """
+
+    @unpack β, α = prim
+    c = y + a - q*ap
+    if c <= 0
+        u = -Inf
+    else 
+        u = ( c^(1 - α) - 1 )/ (1 - α)
+    end 
+    Ev = p[1]*v_e(ap) + p[2]*v_u(ap)
+    v = -1*(u + β*Ev)
+    return v
+end 
+
 #Bellman Operator
 function Bellman(prim::Primitives,res::Results, q::Float64)
     @unpack val_func = res #unpack value function
     @unpack y_grid, A_grid, A_min, A_max, β, α, nA, ny, Π, q_initial = prim #unpack model primitives
     v_next = zeros(nA, ny) #next guess of value function to fill
-    for y_index = 1:ny 
+
+    # Interpolate the value function 
+    v_e = linear_interpolation(A_grid, res.val_func[:,1])
+    v_u = linear_interpolation(A_grid, res.val_func[:,2])
+
+    for y_index = 1:ny
         y = y_grid[y_index]
+        p = Π[y_index, :]
         for a_index = 1:nA
-            a = A_grid[a_index] #value of assets
-            candidate_max = -Inf #bad candidate max
-            budget = y + a #budget
-            for ap_index in 1:nA
-                c = budget - q*A_grid[ap_index] #consumption given a' selection
-                if c>0 #check for positivity
-                    val = (c^(1-α)-1)/(1-α) + β*(Π[y_index,1]*val_func[ap_index,1] + Π[y_index,2]*val_func[ap_index,2]) #compute value
-                    if val>candidate_max #check for new max value
-                        candidate_max = val #update max value
-                        res.pol_func[a_index, y_index] = A_grid[ap_index] #update policy function
-                    end
-                end
-            end
-            v_next[a_index, y_index] = candidate_max #update value function
+            a = A_grid[a_index]
+            a_hat = min((y + a)/q, A_max) # c ≥ 0 constraint
+
+            optim_results = optimize(ap -> cont_val(ap, y, a, q, v_e, v_u, p, prim), A_min, a_hat)
+            a_star = optim_results.minimizer
+            v_star = -1*optim_results.minimum
+
+            v_next[a_index, y_index] = v_star
+            res.pol_func[a_index, y_index] = a_star
         end
-    end 
-    v_next #return next guess of value function 
+    end
+    return v_next
 end
 
 #Value function iteration
@@ -106,24 +121,6 @@ function Tstar(prim::Primitives,res::Results, μ_dist::Array{Float64,1})
         end
         μ_dist = μ_next
     end
-
-    #=while (converged == 0 & it < maxit)
-        μ_dist_up = trans_mat'*μ_dist 
-        #μ_dist_up = μ_dist'*trans_mat
-        
-        # Calculate the Supnorm
-        max_diff = sum(abs.(μ_dist_up - μ_dist))
-        if max_diff < tol
-            converged = 1
-            μ_dist_out = μ_dist_up
-        end
-            
-        it=it+1
-       # println("Iteration #", it, "max_diff:", max_diff)
-        
-        # update cross sectional distribution
-        μ_dist = μ_dist_up =#
-    #end
     return μ_dist
 end 
 
@@ -142,22 +139,22 @@ function Q_Solve(prim::Primitives, res::Results)
 
         V_iterate(prim, res, q) #iterate on value function
         
-        Tstar(prim, res, μ_dist) #iterate on cross sectional distribution
-
+        μ_dist=Tstar(prim, res, μ_dist) #iterate on cross sectional distribution
+        μ = reshape(μ_dist, (prim.nA, prim.ny))
        # println("mu: ",μ_dist)
-        integral = sum(res.pol_func[:, 1]'*μ_dist[1:nA] + res.pol_func[:, 2]'*μ_dist[nA+1:end])
-        #integral = sum(μ_dist[1:nA]*res.pol_func[:, 1] + μ_dist[nA+1:end]*res.pol_func[:, 2])
+        #integral = sum(res.pol_func[:, 1]'*μ_dist[1:nA] + res.pol_func[:, 2]'*μ_dist[nA+1:end])
+        integral = sum(μ.*res.pol_func)
         println("summation:",integral)
 
         if abs(integral)<=.01 #check for market clearing
             mk = 1 #market cleared
         elseif integral<-0.01 #adjust bond price
-            q = q-0.000001
+            q = q-0.00001
         elseif integral>0.01 #adjust bond price
-            q = q+0.000001
+            q = q+0.00001
         end 
         println("Bond price:",q)
-        if iterations>4000 #check for convergence
+        if iterations>1000 #check for convergence
             println("Bond price did not converge")
             break
         end
