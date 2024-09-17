@@ -19,6 +19,16 @@ Plots.plot(A_grid, pol_func[:,1], title="Policy Functions", label="employed", co
 plot!(A_grid, pol_func[:,2], label="unemployed", color="palevioletred", linewidth=:2.0)
 plot!(A_grid,A_grid,label = "45 degree",color="gray40",linestyle=:dash)
 Plots.savefig("PS2/Graphs/Policy_Functions.png")
+# when does policy cross 45 degree line?
+intersection = findmin(abs.(pol_func[:,1] .- A_grid))[1]
+a_hat = zeros(nA)
+for i in 1:nA
+    if abs.(pol_func[i,1] .- A_grid[i])==intersection
+        a_hat[i] = A_grid[i]
+    end 
+end 
+a_hat_ans = findmax(a_hat)
+println("Policy function crosses 45 degree line at $a_hat_ans")
 
 #b) plot the cross sectional distribution of wealth for employed and unemployed agents
 Plots.bar(A_grid, μ_dist[1:nA], title="Cross Sectional Distribution of Wealth", label="employed", color="cadetblue",linecolor="cadetblue", ylabel="Fraction of population", xlabel="assets")
