@@ -20,10 +20,6 @@ plot!(A_grid, val_func[:,2], label="unemployed", color="palevioletred", linewidt
 Plots.savefig("PS2/Graphs/Value_Functions.png")
 
 #policy functions
-Plots.plot(A_grid, pol_func[:,1], title="Policy Functions", label="employed", color="cadetblue", linewidth=:2.0, ylabel="Policy a'(a)", xlabel="assets")
-plot!(A_grid, pol_func[:,2], label="unemployed", color="palevioletred", linewidth=:2.0)
-plot!(A_grid,A_grid,label = "45 degree",color="gray40",linestyle=:dash)
-Plots.savefig("PS2/Graphs/Policy_Functions.png")
 # when does policy cross 45 degree line?
 intersection = findmin(abs.(pol_func[:,1] .- A_grid))[1]
 a_hat = zeros(nA)
@@ -34,6 +30,14 @@ for i in 1:nA
 end 
 a_hat_ans = findmax(a_hat)
 println("Policy function crosses 45 degree line at $a_hat_ans")
+a_hat_bar = minimum(a_hat_ans)
+
+Plots.plot(A_grid, pol_func[:,1], title="Policy Functions", label="employed", color="cadetblue", linewidth=:2.0, ylabel="Policy a'(a)", xlabel="assets")
+plot!(A_grid, pol_func[:,2], label="unemployed", color="palevioletred", linewidth=:2.0)
+plot!(A_grid,A_grid,label = "45 degree",color="gray40",linestyle=:dash)
+vline!([a_hat_bar], color="gray40", label="\$\\hat{a}\$")
+Plots.savefig("PS2/Graphs/Policy_Functions.png")
+
 
 #b) plot the cross sectional distribution of wealth for employed and unemployed agents
 Plots.bar(A_grid, μ_dist[1:nA], title="Cross Sectional Distribution of Wealth", label="employed", color="cadetblue",linecolor="cadetblue", ylabel="Fraction of population", xlabel="assets")
@@ -81,6 +85,7 @@ lambda = (num./denom).^(1/(1-prim.α)) .-1
 #a) plot lamba 
 Plots.plot(A_grid, lambda[:,1], title="Consumption Equivalent", label="λ(a,e) (employed)", color="cadetblue", linewidth=:2.0, ylabel="λ(a,s)", xlabel="assets")
 plot!(A_grid, lambda[:,2], label="λ(a,u) (unemployed)", color="palevioletred", linewidth=:2.0)
+vline!([a_hat_bar], color="gray40", label="\$\\hat{a}\$")
 Plots.savefig("PS2/Graphs/Consumption_Equivalent.png")
 
 #b) calculate the welfare first best and welfare incomplete markets and welfare gain 
