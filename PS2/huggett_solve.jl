@@ -1,3 +1,8 @@
+#=
+Author: Olivia 
+Date: September 2024 
+=#
+
 using Parameters, Plots, LinearAlgebra, Optim, Interpolations #import the libraries we want
 using Trapz
 include("huggett_model.jl") #import the functions that solve our growth model
@@ -65,7 +70,6 @@ Plots.savefig("PS2/Graphs/Lorenz.png")
 area = trapz(population_lorenz,wealth_lorenz)
 @show gini = 1 - 2 * area
 println("Gini coefficient in US 2021 is .398 (FRED). Our model has a Gini coefficient of $gini")
-#gini should be .3821
 
 ## PART III Welfare Anaylsis
 w_fb = (((.9715)^(1-prim.α)-1)/(1-prim.α))/(1-prim.β)
