@@ -7,7 +7,7 @@ Date: October 2024
     n::Float64 = 0.011 #population growth rate//model period length 
     a_1::Float64 = 0.0 #initial assets at age 1 
     a_max::Float64 = 100.0 #max assets
-    nA::Int64 = 2501 #number of asset grid points
+    nA::Int64 = 1501 #number of asset grid points
     A_grid::Array{Float64,1} = collect(range(0.0, length = nA, stop = a_max)) #grid for assets
     #θ::Float64 = 0.11 #proportional labor income tax 
     #γ::Float64 = 0.42 #weight on consumption 
