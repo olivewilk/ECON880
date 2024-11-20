@@ -73,9 +73,11 @@ plot(cn[2:end], label="Contraction mapping and Newton", title="Convergence of th
 plot!(cm[2:end], label="Contraction mapping only", color="palevioletred", lw=2)
 Plots.savefig("PS3b/output/q1_evolution_of_norm.png")
 
+println("Question 1 done") 
+
 # 2) Grid search over lambda_p in [0,1]
 X = Matrix(df_characteristics[:, 6:end])
-Z = hcat(Matrix(df_characteristics[:, 7:end]),Matrix(df_iv[:, 3:end]))
+Z = hcat(Matrix(df_characteristics[:, 7:end]),Matrix(df_iv[:, 3:8]))
 
 function beta_iv(X,Z,W,delta_grid)
     beta = inv((X'*Z)*W*(Z'*X))*(X'*Z)*W*Z'*delta_grid
@@ -86,7 +88,7 @@ function rho(delta_grid, X, beta_iv)
 end 
 
 #function gmm_obj(lambda_p, eps, eps1, W, X, Z)
-function GMM(lambda_p::Float64, W)
+function GMM(lambda_p, W)
 
     delta_grid = []
     for y in 1985:2015
@@ -115,6 +117,7 @@ end
 plot(lambda_grid, q2res, label="GMM objective function", title="GMM objective function over lambda", color="cadetblue",xlabel="lambda_p", ylabel="GMM objective function", lw=2)
 Plots.savefig("PS3b/output/q2_gmm_first.png")
 
+println("Question 2 done") 
 # 3) Using the minimum from the grid search, estimate the parameter λp using 2-step GMM. 
 lambda_guess = [0.6]
 f(l) = GMM(l, W1)
@@ -122,12 +125,23 @@ gmm = optimize(f, lambda_guess, BFGS())
 lambda_hat = Optim.minimizer(gmm)
 
 # find rho(λ_hat)
-delta_grid_hat = []
-for y in 1985:2015
-    delta_grid_hat = vcat(delta_grid_hat,invert_demand(y, lambda_hat, eps, eps1)[2])
-end    
-beta_hat = beta_iv(X,Z,W1,delta_grid_hat)
-rho_hat = rho(delta_grid_hat, X, beta_hat)
+function GMM_rho(lambda_p, W)
+
+    delta_grid = []
+    for y in 1985:2015
+        delta_grid = vcat(delta_grid,invert_demand(y, lambda_p, eps, eps1)[2])
+    end 
+    
+    beta = beta_iv(X,Z,W,delta_grid)
+
+    r = rho(delta_grid, X, beta)
+    
+    ans = r'*Z*W*Z'*r
+    ans = ans[1,1]
+    return r
+end 
+
+rho_hat = GMM_rho(lambda_hat, W1)
 
 W2 = inv((Z.*rho_hat)'*(Z.*rho_hat)) #weight matrix for 2-step 
 
